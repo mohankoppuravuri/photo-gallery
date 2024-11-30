@@ -10,7 +10,26 @@
 6. Last saved at is visible to the end user.
 
 ### Future Scope
-1. Creating proper POST and PUT API call to create new images and save the ordering in postgresql
+1. Creating proper POST and PUT API call to create new images and save the ordering in postgresql.
+####
+2. API to add new image. 
+   - A PUT REST API method that takes `image url, position, title and type of the image` in the request body.
+   - Creating a new row in the postgres database.
+   - Validaton on table level with unique position.
+   - Position at the API payload is optional. Server calculates the default position.
+
+4. API to delete an image
+   - DELETE REST API
+   - Request takes the image id.
+   - Server makes database call to delete the row.
+   - Using databse trigger on delete row in the table. Run a Reordering functions to fix the position.
+
+5. API for updating an image
+   - PATCH API call.
+   - Takes the image unique in the URL along with updated positon and other fields in the request payload.
+   - Server makes an update API call to the database using id.
+   - Updating all positions greater than current image ids positon by one .
+   - Update any other required fields.
 
 ### Prerequisites to run this application
 
@@ -25,9 +44,11 @@ Docker or Deno should be installed in laptop
 ### Without using docker 
 1. Install deno in machine
 2. RUN `deno install`
-3. deno task serve
+3. RUN `deno task serve`
 
 
 ### Technologies used
 React, deno, vite, html, css
+
+
 
