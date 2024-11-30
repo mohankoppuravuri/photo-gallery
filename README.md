@@ -28,7 +28,7 @@
    - PATCH API call.
    - Takes the image unique in the URL along with updated positon and other fields in the request payload.
    - Server makes an update API call to the database using id.
-   - Updating all positions greater than current image ids positon by one .
+   - Updating positons of affected images.
    - Update any other required fields.
 
 ### Prerequisites to run this application
