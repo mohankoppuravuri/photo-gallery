@@ -1,192 +1,247 @@
+
 import { useEffect, useRef, useState } from "react";
-import "./App.css";
-import type { PhotoJSONType, SavedStateType } from "./types.ts";
-import type React from "@types/react";
-import { type SetStateAction } from "@types/react";
-import { imageURLs } from "./constants.ts";
 
-const RenderImage: React.FC<{
-  item: PhotoJSONType;
-  handleClick: () => void;
-}> = ({ item, handleClick }) => {
-  const [isLoading, setIsLoading] = useState(true);
+interface TaskType {
+    id: number;
+    category: string;
+    title: string;
+    status: "pending" | "completed";
+    description: string;
+}
 
-  return (
-    <div>
-      <p>{item.type}</p>
-      <img
-        style={isLoading
-          ? {
-            display: "none",
-          }
-          : {}}
-        src={item.src}
-        alt={item.title}
-        onClick={handleClick}
-        onLoad={() => {
-          setIsLoading(false);
-        }}
-      />
-      {isLoading ? <div className="loader"></div> : null}
+const initialTasks: TaskType[] = [
+    {
+        "id": 1,
+        "category": "Shopping",
+        "title": "Shopping",
+        "status": "pending",
+        "description": "Get essentials from Trader Joe's"
+    },
+    {
+        "id": 2,
+        "category": "Shopping",
+        "title": "Shoes",
+        "status": "pending",
+        "description": "Purchase running shoes"
+    },
+    {
+        "id": 3,
+        "category": "Work",
+        "title": "Presentation",
+        "status": "completed",
+        "description": "Create slides for team meeting"
+    },
+    {
+        "id": 4,
+        "category": "Work",
+        "title": "Review",
+        "status": "pending",
+        "description": "Review frontend team's pull request"
+    },
+    {
+        "id": 5,
+        "category": "Home",
+        "title": "Garage",
+        "status": "pending",
+        "description": "Organize tools and discard unnecessary items"
+    },
+    {
+        "id": 6,
+        "category": "Home",
+        "title": "Plants",
+        "status": "completed",
+        "description": "Water indoor and outdoor plants"
+    },
+    {
+        "id": 7,
+        "category": "Health",
+        "title": "Exercise",
+        "status": "pending",
+        "description": "Complete 30-minute yoga session"
+    },
+    {
+        "id": 8,
+        "category": "Health",
+        "title": "Appointment",
+        "status": "pending",
+        "description": "Visit dentist for routine check-up"
+    }
+]
+
+
+
+const TaskCard: React.FC<{
+    task: TaskType
+    handleTaskComplete: (id: number) => void
+    handleDeleteTask: (id: number) => void
+}> = ({ task, handleTaskComplete, handleDeleteTask }) => {
+
+    return <div style={{
+        width: "500px",
+        height: "90px",
+        border: "1px solid black",
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "10px",
+        margin: "10px",
+        background: task.status === "completed" ? "lightgreen" : "white"
+    }}>
+        <div>
+            <p>{task.title}</p>
+            <p>{task.description}</p>
+        </div>
+        <div>
+            <button onClick={() => {
+                handleTaskComplete(task.id)
+            }}>Done</button>
+            <button onClick={() => { handleDeleteTask(task.id) }}>Delete</button>
+        </div>
     </div>
-  );
-};
+}
+
 
 const App = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [overlayImageURL, setOverlayImageURL] = useState("");
-  /** For some reason useState is not considering the type provided using useState<PhotoJSONType[]> */
-  const [items, setItems]: [
-    PhotoJSONType[],
-    React.Dispatch<SetStateAction<PhotoJSONType[]>>,
-  ] = useState([]);
-  const ref = useRef();
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [saveState, setSaveState]: [SavedStateType, React.Dispatch<SetStateAction<SavedStateType[]>>] = useState()
+    const [newTaskFormData, setNewTaskFormData] = useState<null | {
+        title: string,
+        description: string
+        category: string
+    }>(null)
+    const [searchDraft, setSearchDraft] = useState("")
+    const [search, setSearch] = useState("")
+    const [tasks, setTasks]: [TaskType[], any] = useState(initialTasks)
 
-  /**
-   *  Saving every 5 seconds
-  */
-
-  const saveOrder = async () => {
-    /** Save the order in the local storage */
-    if (!ref.current?.length || localStorage.getItem("photoes") === JSON.stringify(ref.current)) {
-      return;
+    const handleSearch = (e) => {
+        setSearch(searchDraft)
     }
-    setSaveState(prev => ({
-      ...prev,
-      isLoading: true
-    }));
 
-    await fetch("photoes", { method: "POST" })
-    localStorage.setItem("photoes", JSON.stringify(ref.current));
-    setSaveState({
-      lastSavedTimeStamp: new Date().toISOString(),
-      isLoading: false,
-    })
-  };
-
-  useEffect(() => {
-    ref.current = items;
-  }, [items]);
-
-  useEffect(() => {
-    /**
-     * Fetching image data
-     */
-    fetchPhotoJSONList();
-
-    /**
-     * Esc button control
-     */
-    const handleEscEventListener = (event) => {
-      if (event.key === "Escape" || event.key === "Esc") {
-        setOverlayImageURL("");
-      }
+    const handleCancel = () => {
+        setSearch("")
+        setSearchDraft("")
     }
-    document.addEventListener("keydown", handleEscEventListener);
 
-
-    const interval = setInterval(
-      saveOrder,
-      5000,
-    );
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("keydown", handleEscEventListener);
-    };
-  }, []);
-
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver: React.DragEventHandler<HTMLDivElement> | undefined = (
-    event,
-  ) => {
-    event.preventDefault();
-  };
-
-  const handleDrop = (index: number) => {
-    if (draggedIndex !== null && draggedIndex !== index) {
-      // Reorder items
-      const newItems = [...items];
-      const [draggedItem] = newItems.splice(draggedIndex, 1);
-      newItems.splice(index, 0, draggedItem);
-
-      setItems(newItems);
+    const handleAddNewTask: (title: string, description: string, category: string) => void = (
+        title,
+        description,
+        category
+    ) => {
+        setTasks(prev => ([{
+            id: Math.random(),
+            category,
+            title,
+            status: "pending",
+            description
+        }, ...prev]))
+        setNewTaskFormData(null)
     }
-    setDraggedIndex(null);
-  };
 
-  const fetchPhotoJSONList = async () => {
-    /**
-     * 1. Check if data exists in localstorage.
-     * 2. If yes then save it at local state.
-     * 3. If not then make an API call to fetch the data.
-     * 4. Cache the data at local storage.
-     */
+    const handleTaskComplete = (id: number) => {
 
-    const localStoragePhotoesString = localStorage.getItem("photoes");
-    if (localStoragePhotoesString) {
-      const localStoragePhotoes = JSON.parse(localStoragePhotoesString);
-      setItems(localStoragePhotoes);
-    } else {
-      const response = await fetch("/photoes");
-      const data: PhotoJSONType[] = await response.json();
-      const formattedData = data.map((item, idx) => ({
-        ...item,
-        src: imageURLs[idx],
-      }));
-      setItems(formattedData);
-      localStorage.setItem("photoes", JSON.stringify(formattedData));
+        setTasks(prev => {
+            return prev.map(prevTask => {
+                if (prevTask.id === id) {
+                    return {
+                        ...prevTask,
+                        status: "completed"
+                    }
+                }
+                return prevTask
+            })
+        })
+
     }
-    setIsLoading(false);
-  };
 
-  if (isLoading) {
-    return <div className="loader"></div>;
-  }
+    const handleDeleteTask = (id: number) => {
+        setTasks(prev => {
+            return prev.filter(prevTask => prevTask.id !== id)
+        })
+    }
 
-  return (
-    <>
-      {overlayImageURL
-        ? (
-          <div className="overlay">
-            <img src={overlayImageURL} />
-          </div>
-        )
-        : null}
+    return <div style={{
+        margin: "30px"
+    }}>
+        <div>
+            <button onClick={() => {
+                setNewTaskFormData({
+                    title: "",
+                    category: "",
+                    description: ""
+                })
+            }}>Add Task</button>
 
-      <div className="last-saved-container">
-        {saveState?.isLoading ? <div className="sync-loader"> </div> :
-          saveState ? <div>
-            Last saved at: {new Date(saveState.lastSavedTimeStamp).toLocaleString("en")}
-          </div> : null}
-      </div >
+            <input
+                placeholder="Search by category" onChange={(e) => {
+                    setSearchDraft(e.target.value)
+                }} />
+            <button onClick={handleSearch}>Search</button>
 
-      <div className="container">
-        {items.map((item, index) => (
-          <div
-            className={`grid-item-${index + 1}`}
-            key={index}
-            draggable
-            onDragStart={() => handleDragStart(index)}
-            onDragOver={handleDragOver}
-            onDrop={() => handleDrop(index)}
-          >
-            <RenderImage
-              item={item}
-              handleClick={() => {
-                setOverlayImageURL(item.src);
-              }}
-            />
-          </div>
-        ))}
-      </div>
-    </>
-  );
-};
+            <button onClick={handleCancel}>Cancel</button>
+        </div >
 
-export default App;
+        {
+            newTaskFormData ? <div style={{
+                padding: "5px",
+                margin: "5px",
+                border: "1px solid black"
+            }}>
+                <div>
+                    <p>Title</p>
+                    <input value={newTaskFormData.title}
+                        onChange={(e) => {
+                            setNewTaskFormData(prev => ({
+                                ...prev,
+                                title: e.target.value
+                            }))
+                        }}
+                    ></input>
+                </div>
+                <div>
+                    <p>Description</p>
+                    <input value={newTaskFormData.description}
+                        onChange={(e) => {
+                            setNewTaskFormData(prev => ({
+                                ...prev,
+                                description: e.target.value
+                            }))
+                        }}
+                    ></input>
+                </div>
+                <div>
+                    <p>Category</p>
+                    <input value={newTaskFormData.category}
+                        onChange={(e) => {
+                            setNewTaskFormData(prev => ({
+                                ...prev,
+                                category: e.target.value
+                            }))
+                        }}
+                    ></input>
+                </div>
+
+                <button onClick={() => {
+                    handleAddNewTask(newTaskFormData.title, newTaskFormData.description, newTaskFormData.category)
+                }}>Add</button>
+                <button
+                    onClick={() => {
+                        setNewTaskFormData(null)
+                    }}>Cancel</button>
+
+            </div> : null
+        }
+        <div>{
+            tasks?.filter(task => {
+                if (search) {
+                    return task.category.includes(search)
+                }
+                return true
+            }).map((task) => {
+                return <TaskCard task={task} key={task.id}
+                    handleTaskComplete={handleTaskComplete}
+                    handleDeleteTask={handleDeleteTask}
+                />
+            })
+        }</div>
+
+    </div >
+}
+
+export default App
